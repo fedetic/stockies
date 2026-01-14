@@ -1,0 +1,16 @@
+{
+  "name": "RSI Mean Reversion",
+  "description": "Buy oversold stocks above 200-day MA, sell when overbought",
+  "entry_rules": "rsi(14) < 30 AND price > sma(200)",
+  "exit_rules": "rsi(14) > 70",
+  "position_sizing": {
+    "method": "percentage",
+    "value": 10
+  },
+  "risk_management": {
+    "stop_loss_pct": 5,
+    "take_profit_pct": 15,
+    "trailing_stop": false,
+    "trailing_stop_pct": null
+  }
+}

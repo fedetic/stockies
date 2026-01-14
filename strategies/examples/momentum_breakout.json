@@ -1,0 +1,16 @@
+{
+  "name": "Momentum Breakout",
+  "description": "Buy strong momentum with volume confirmation",
+  "entry_rules": "price > sma(50) AND volume > sma(volume, 20) * 1.5 AND rsi(14) > 50",
+  "exit_rules": "price < sma(20) OR rsi(14) < 40",
+  "position_sizing": {
+    "method": "percentage",
+    "value": 15
+  },
+  "risk_management": {
+    "stop_loss_pct": 7,
+    "take_profit_pct": 20,
+    "trailing_stop": true,
+    "trailing_stop_pct": 5
+  }
+}

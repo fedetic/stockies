@@ -111,8 +111,13 @@ class CacheManager:
             if df.empty:
                 return None
             
+            # Set index and rename columns to match expected format (capitalized)
             df['date'] = pd.to_datetime(df['date'])
             df.set_index('date', inplace=True)
+            df.index.name = 'Date'
+            
+            # Rename columns to match capitalized format used by yfinance
+            df.columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'Adj_Close']
             
             return df
         finally:
@@ -137,7 +142,10 @@ class CacheManager:
             
             # Prepare data
             df_reset = df.reset_index()
-            df_reset['date'] = df_reset['date'].dt.strftime('%Y-%m-%d')
+            
+            # Handle both 'Date' and 'date' column names (yfinance returns 'Date' with capital D)
+            date_col = 'Date' if 'Date' in df_reset.columns else 'date'
+            df_reset['date'] = pd.to_datetime(df_reset[date_col]).dt.strftime('%Y-%m-%d')
             
             # Insert or replace data
             for _, row in df_reset.iterrows():
@@ -207,7 +215,19 @@ class CacheManager:
         
         try:
             created_at = datetime.now().isoformat()
-            data_json = json.dumps(data)
+            
+            # Convert Timestamp keys to strings for JSON serialization
+            serializable_data = {}
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    # Convert nested dict with Timestamp keys to string keys
+                    serializable_data[key] = {
+                        str(k): v for k, v in value.items()
+                    }
+                else:
+                    serializable_data[key] = value
+            
+            data_json = json.dumps(serializable_data)
             
             cursor.execute('''
                 INSERT OR REPLACE INTO fundamental_data (ticker, data, created_at)

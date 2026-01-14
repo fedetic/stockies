@@ -149,6 +149,23 @@ class RulesEngine:
             # Constant value
             return pd.Series(expr['value'], index=df.index)
         
+        elif expr_type == 'arithmetic':
+            # Arithmetic operation (e.g., entry_price * 0.95)
+            left_series = self._evaluate_expression(df, expr['left'], include_entry_price)
+            right_series = self._evaluate_expression(df, expr['right'], include_entry_price)
+            operator = expr['operator']
+            
+            if operator == '*':
+                return left_series * right_series
+            elif operator == '/':
+                return left_series / right_series
+            elif operator == '+':
+                return left_series + right_series
+            elif operator == '-':
+                return left_series - right_series
+            else:
+                return pd.Series(np.nan, index=df.index)
+        
         elif expr_type == 'variable':
             # Variable reference
             var_name = expr['name']

@@ -11,8 +11,9 @@ class StrategyParser:
     """Parses and validates strategy rules"""
     
     # Supported operators
-    COMPARISON_OPERATORS = ['>', '<', '>=', '<=', '==', '!=']
+    COMPARISON_OPERATORS = ['>=', '<=', '==', '!=', '>', '<']  # Order matters: longer operators first
     LOGICAL_OPERATORS = ['AND', 'OR', 'NOT']
+    ARITHMETIC_OPERATORS = ['*', '/', '+', '-']
     
     # Supported indicators
     INDICATORS = [
@@ -57,7 +58,7 @@ class StrategyParser:
     
     def _parse_expression(self, expr: str) -> Dict[str, Any]:
         """
-        Parse an expression (indicator, variable, or value)
+        Parse an expression (indicator, variable, value, or arithmetic operation)
         
         Args:
             expr: Expression string
@@ -105,6 +106,29 @@ class StrategyParser:
         # Check if it's a variable
         if expr.lower() in self.VARIABLES:
             return {'type': 'variable', 'name': expr.lower()}
+        
+        # Check if it's an arithmetic expression (e.g., "entry_price * 0.95")
+        for op in self.ARITHMETIC_OPERATORS:
+            if op in expr:
+                parts = expr.split(op, 1)
+                if len(parts) == 2:
+                    left_str = parts[0].strip()
+                    right_str = parts[1].strip()
+                    
+                    # Validate that both sides can be parsed
+                    try:
+                        left_expr = self._parse_expression(left_str)
+                        right_expr = self._parse_expression(right_str)
+                        
+                        return {
+                            'type': 'arithmetic',
+                            'operator': op,
+                            'left': left_expr,
+                            'right': right_expr
+                        }
+                    except ValueError:
+                        # If parsing fails, continue to try other operators
+                        continue
         
         raise ValueError(f"Invalid expression: {expr}")
     

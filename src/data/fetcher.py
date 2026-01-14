@@ -58,8 +58,12 @@ class DataFetcher:
             if df.empty:
                 return pd.DataFrame()
             
-            # Standardize column names
+            # Standardize column names - replace spaces with underscores
             df.columns = [col.replace(' ', '_') if ' ' in col else col for col in df.columns]
+            
+            # Ensure index is named 'Date' for consistency
+            if df.index.name is None or df.index.name.lower() == 'date':
+                df.index.name = 'Date'
             
             # Ensure we have the basic OHLCV columns
             required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
@@ -67,9 +71,12 @@ class DataFetcher:
                 if col not in df.columns:
                     df[col] = 0
             
-            # Add Adj_Close if not present
+            # Add Adj_Close if not present (handle both 'Adj Close' and 'Adj_Close')
             if 'Adj_Close' not in df.columns:
-                df['Adj_Close'] = df['Close']
+                if 'Adj Close' in df.columns:
+                    df['Adj_Close'] = df['Adj Close']
+                else:
+                    df['Adj_Close'] = df['Close']
             
             # Cache the data (only for daily interval)
             if interval == '1d':

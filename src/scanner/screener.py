@@ -3,6 +3,7 @@ Stock screener interface
 """
 import pandas as pd
 from typing import List, Optional, Dict, Any
+import warnings
 
 from .moat_analyzer import MoatAnalyzer
 from src.data.fetcher import DataFetcher
@@ -11,7 +12,10 @@ from src.data.fetcher import DataFetcher
 class StockScreener:
     """Stock screening with moat analysis"""
     
-    # Popular indices
+    # Cache for S&P 500 tickers
+    _sp500_cache: Optional[List[str]] = None
+    
+    # Sample list for quick testing (not used for full scans)
     SP500_SAMPLE = [
         'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK.B', 'UNH', 'JNJ',
         'V', 'XOM', 'WMT', 'JPM', 'PG', 'MA', 'HD', 'CVX', 'LLY', 'ABBV',
@@ -36,6 +40,47 @@ class StockScreener:
     def __init__(self, moat_analyzer: Optional[MoatAnalyzer] = None):
         self.moat_analyzer = moat_analyzer or MoatAnalyzer()
         self.data_fetcher = DataFetcher()
+    
+    @classmethod
+    def get_sp500_tickers(cls, use_cache: bool = True) -> List[str]:
+        """
+        Fetch the full S&P 500 ticker list from Wikipedia
+        
+        Args:
+            use_cache: Whether to use cached list if available
+            
+        Returns:
+            List of S&P 500 ticker symbols
+        """
+        # Return cached list if available and use_cache is True
+        if use_cache and cls._sp500_cache is not None:
+            return cls._sp500_cache.copy()
+        
+        try:
+            # Fetch S&P 500 list from Wikipedia
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+                tables = pd.read_html(url)
+                sp500_table = tables[0]
+            
+            # Extract ticker symbols
+            tickers = sp500_table['Symbol'].tolist()
+            
+            # Clean tickers (remove any special characters that might cause issues)
+            tickers = [ticker.replace('.', '-') for ticker in tickers]
+            
+            # Cache the result
+            cls._sp500_cache = tickers
+            
+            print(f"Successfully fetched {len(tickers)} S&P 500 tickers")
+            return tickers.copy()
+        
+        except Exception as e:
+            print(f"Error fetching S&P 500 list: {str(e)}")
+            print("Falling back to sample list")
+            # Fallback to sample list if fetch fails
+            return cls.SP500_SAMPLE.copy()
     
     def screen_stocks(
         self,
@@ -75,7 +120,8 @@ class StockScreener:
         self,
         universe: str = 'SP500',
         min_moat_score: float = 50,
-        top_n: Optional[int] = None
+        top_n: Optional[int] = None,
+        use_full_sp500: bool = True
     ) -> pd.DataFrame:
         """
         Screen stocks from a predefined universe
@@ -84,19 +130,21 @@ class StockScreener:
             universe: Stock universe ('SP500', 'TECH', 'HEALTHCARE', 'FINANCIAL')
             min_moat_score: Minimum overall moat score
             top_n: Return only top N stocks (None for all)
+            use_full_sp500: If True, uses full S&P 500 list; if False, uses sample (for testing)
             
         Returns:
             DataFrame with screening results
         """
         # Get ticker list for universe
-        universe_map = {
-            'SP500': self.SP500_SAMPLE,
-            'TECH': self.TECH_STOCKS,
-            'HEALTHCARE': self.HEALTHCARE_STOCKS,
-            'FINANCIAL': self.FINANCIAL_STOCKS
-        }
-        
-        tickers = universe_map.get(universe.upper(), self.SP500_SAMPLE)
+        if universe.upper() == 'SP500':
+            tickers = self.get_sp500_tickers() if use_full_sp500 else self.SP500_SAMPLE
+        else:
+            universe_map = {
+                'TECH': self.TECH_STOCKS,
+                'HEALTHCARE': self.HEALTHCARE_STOCKS,
+                'FINANCIAL': self.FINANCIAL_STOCKS
+            }
+            tickers = universe_map.get(universe.upper(), self.SP500_SAMPLE)
         
         # Screen stocks
         results = self.screen_stocks(tickers, min_moat_score=min_moat_score)

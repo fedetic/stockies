@@ -33,7 +33,7 @@ def render_scanner_page():
     tickers = []
     
     if input_method == "Predefined Universe":
-        col1, col2 = st.columns([2, 1])
+        col1, col2, col3 = st.columns([2, 1, 1])
         
         with col1:
             universe = st.selectbox(
@@ -42,16 +42,33 @@ def render_scanner_page():
             )
         
         with col2:
-            top_n = st.number_input("Top N Results", min_value=5, max_value=50, value=20, step=5)
+            top_n = st.number_input("Top N Results", min_value=5, max_value=100, value=20, step=5)
+        
+        with col3:
+            # Option to use full S&P 500 or sample for testing
+            if universe == "SP500":
+                use_full_sp500 = st.checkbox("Full S&P 500", value=True, 
+                                            help="Uncheck to use 30-stock sample for testing")
+            else:
+                use_full_sp500 = False
         
         # Get tickers from universe
-        universe_map = {
-            'SP500': StockScreener.SP500_SAMPLE,
-            'TECH': StockScreener.TECH_STOCKS,
-            'HEALTHCARE': StockScreener.HEALTHCARE_STOCKS,
-            'FINANCIAL': StockScreener.FINANCIAL_STOCKS
-        }
-        tickers = universe_map.get(universe, [])
+        if universe == 'SP500':
+            if use_full_sp500:
+                with st.spinner("Fetching S&P 500 ticker list..."):
+                    tickers = StockScreener.get_sp500_tickers()
+                st.info(f"📊 Ready to scan {len(tickers)} S&P 500 stocks")
+            else:
+                tickers = StockScreener.SP500_SAMPLE
+                st.info(f"📊 Using sample of {len(tickers)} stocks for testing")
+        else:
+            universe_map = {
+                'TECH': StockScreener.TECH_STOCKS,
+                'HEALTHCARE': StockScreener.HEALTHCARE_STOCKS,
+                'FINANCIAL': StockScreener.FINANCIAL_STOCKS
+            }
+            tickers = universe_map.get(universe, [])
+            st.info(f"📊 Ready to scan {len(tickers)} {universe} stocks")
     
     elif input_method == "Manual Entry":
         ticker_input = st.text_area(
